@@ -1,6 +1,8 @@
 import time
+import csv
 import json
 from random import randint
+import pandas as pd
 
 # returns true if id is unique, and false otherwise
 def checkNewID(id):
@@ -13,25 +15,48 @@ def checkNewID(id):
         else:
             return True
 
+# returns names of the films given in a list of film IDs
+def getMovieNames(ids):
+    names = []
+    movie_data = pd.read_csv('./data/movies.csv')
+
+    for id in ids:
+        title = movie_data[movie_data['movieId'] == id]['title'].iloc[0]
+        names.append(title)
+
+    return names
+
+# shows active user their past ratings
 def viewRatings(id):
-    with open('ratings.json', "r") as ratings_file:
-        info = json.load(ratings_file)
-        users = info['users']
+    print('Loading your ratings...')
+    info = pd.read_csv('./data/ratings.csv', index_col=False)
 
-        if id in users:
-            ratings = info['users'][id]['ratings']
-            
-            print('Your Ratings: \n')
-            time.sleep(1)
-            for key, value in ratings.items():
-                print('Song: ', key, ', Rating: ', value, '\n')
+    ratings = (info.loc[info['userId'] == int(id)])
 
-        else:
-            print('No Ratings to Date')
+    movie_ids = ratings['movieId'].to_list()
 
+    # print(movie_ids)
+
+    movie_names = getMovieNames(movie_ids)
+
+    result = ratings 
+
+    result = result.drop('userId', 1)
+    result = result.drop('timestamp', 1)
+    result = result.drop('movieId', 1)
+
+    result['movie'] = movie_names
+
+    
+    result.set_index('movie', inplace=True)
+
+
+    print(result)
+    
+# load system for the active user
 def startSystem(id):
     print('Booting up the recommender systems for user: ', id, '... \n')
-    time.sleep(2)
+    # time.sleep(2)
 
     print('Menu: ')
     print('1. View Ratings')
@@ -46,7 +71,7 @@ def startSystem(id):
 
 def startUI():
     print('--------Song Recommender System--------')
-    time.sleep(3)
+    # time.sleep(3)
     print('Menu: ')
     print('1: Login')
     print('2: Create New User')
@@ -57,14 +82,14 @@ def startUI():
     # login as an existing user
     if (choice) == '1':
         print('Login \n')
-        time.sleep(1)
+        # time.sleep(1)
 
         print('Please enter your User ID: ')
 
         userID = input()
 
         print('Checking if user exists... \n')
-        time.sleep(2)
+        # time.sleep(2)
         with open('users.json', "r") as users_file:
             info = json.load(users_file)
             existent_users = info['users']
@@ -77,12 +102,12 @@ def startUI():
             else:
                 print('User does not exist in the userbase.')
 
-        time.sleep(1)
+        # time.sleep(1)
 
     # creating a new user
     elif choice == '2':
         print('Creating a New User... \n')
-        time.sleep(2)
+        # time.sleep(2)
 
         newID = randint(100000, 999999)
 
@@ -107,10 +132,28 @@ def startUI():
 
         print('Your new User ID is: ', newID)
 
-        time.sleep(1)
+        # time.sleep(1)
 
         print('Please remember this so you can login next time!')
 
+def populateUsers():
+    info = pd.read_csv('./data/ratings.csv', index_col=False)
 
+    users = (info['userId'].unique())
+
+    users = users.tolist()
+
+    to_write = {}
+    to_write['users'] = users
+
+    # print(to_write)
+
+    with open('users.json', "w") as users_file:
+        to_write = json.dumps(to_write)
+        users_file.write(to_write)
+
+
+    print(users)
 if __name__ == '__main__':
     startUI()
+    # populateUsers()
