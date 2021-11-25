@@ -154,6 +154,9 @@ def populateUsers():
 
 
     print(users)
+
+
 if __name__ == '__main__':
-    startUI()
+    # startUI()
     # populateUsers()
+    createMovieVectors()
