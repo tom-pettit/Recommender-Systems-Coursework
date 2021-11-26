@@ -60,25 +60,57 @@ class ContentBasedSystem():
         
         top_10_predictions = weighted_movies[:10]
 
-        # print(top_10_predictions)
+        tags = user_profile.columns
+        features = user_profile.values.flatten().tolist()
 
-        return top_10_predictions
+        user_tag_impact_dict =  dict(zip(tags, features))
+
+        user_tag_impact_dict = dict(sorted(user_tag_impact_dict.items(), key=lambda item: item[1], reverse=True))
+
+        top_user_tags = {k: user_tag_impact_dict[k] for k in list(user_tag_impact_dict.keys())[:5]}
+
+        top_user_tags = list(top_user_tags.keys())
+
+        tags_info = pd.read_csv('./data/genome-tags.csv')
+
+        user_top_tags_info = tags_info.loc[tags_info['tagId'].isin(top_user_tags)]
+
+        user_top_tags = list(user_top_tags_info['tag'])
+
+        return top_10_predictions, user_top_tags
 
     def returnPredictedMovies(self):
-        top_10_predictions = self.makePredictions()
+        top_10_predictions, user_top_tags = self.makePredictions()
         movieDetails = pd.read_csv('./data/movies.csv')
+        all_tags = pd.read_csv('./data/genome-scores.csv')
+        all_tags_info = pd.read_csv('./data/genome-tags.csv')
 
         titles = []
+        top_tags = []
         for index, row in top_10_predictions.iterrows():
             id = index
             movie = movieDetails.loc[movieDetails['movieId'] == id]
             title = movie['title'].item()
             titles.append(title)
 
+            movie_tags = all_tags.loc[all_tags['movieId'] == id]
+
+            movie_tags = movie_tags.sort_values('relevance', ascending=False)
+
+            top_5_tag_ids = (movie_tags[:5])['tagId'].to_list()
+
+            tag_names = []
+            for tag in top_5_tag_ids:
+                tag_name = all_tags_info.loc[all_tags_info['tagId'] == tag]['tag'].item()
+                tag_names.append(tag_name)
+
+            top_tags.append(tag_names)
+
         top_10_predictions['title'] = titles
+        top_10_predictions['top_tags'] = top_tags
 
-        print(top_10_predictions[['title', 'prediction']])
+        # print(top_10_predictions[['title', 'prediction']])
 
-        return top_10_predictions
+        return top_10_predictions, user_top_tags
 
         

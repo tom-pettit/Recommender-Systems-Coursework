@@ -58,7 +58,11 @@ def showRecommendations(id):
     recommender = ContentBasedSystem(id)
 
     print('Creating your personalised recommendations...')
-    predictions = recommender.returnPredictedMovies()
+    predictions, user_top_tags = recommender.returnPredictedMovies()
+
+    print('Because you like: ', [tag for tag in user_top_tags], '\n')
+
+    print(predictions[['title', 'prediction', 'top_tags']])
 
 
 # load system for the active user
