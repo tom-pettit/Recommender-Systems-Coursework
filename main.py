@@ -3,6 +3,7 @@ import csv
 import json
 from random import randint
 import pandas as pd
+from content_based_filter import ContentBasedSystem
 
 # returns true if id is unique, and false otherwise
 def checkNewID(id):
@@ -53,6 +54,13 @@ def viewRatings(id):
 
     print(result)
     
+def showRecommendations(id):
+    recommender = ContentBasedSystem(id)
+
+    print('Creating your personalised recommendations...')
+    predictions = recommender.returnPredictedMovies()
+
+
 # load system for the active user
 def startSystem(id):
     print('Booting up the recommender systems for user: ', id, '... \n')
@@ -61,13 +69,16 @@ def startSystem(id):
     print('Menu: ')
     print('1. View Ratings')
     print('2. Add a New Rating')
-    print('3. Logout')
+    print('3. Recommendations')
+    print('4. Logout')
     print('\n')
 
     choice = input()
 
     if (choice) == '1':
         viewRatings(id)
+    elif choice == '3':
+        showRecommendations(id)
 
 def startUI():
     print('--------Song Recommender System--------')
@@ -157,6 +168,5 @@ def populateUsers():
 
 
 if __name__ == '__main__':
-    # startUI()
+    startUI()
     # populateUsers()
-    createMovieVectors()
