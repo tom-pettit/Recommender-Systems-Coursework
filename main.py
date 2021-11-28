@@ -4,6 +4,8 @@ import json
 from random import randint
 import pandas as pd
 from content_based_filter import ContentBasedSystem
+import datetime
+import numpy as np
 
 # returns true if id is unique, and false otherwise
 def checkNewID(id):
@@ -26,6 +28,41 @@ def getMovieNames(ids):
         names.append(title)
 
     return names
+
+# let the active user leave another review
+def addNewRating(id):
+    movies = pd.read_csv('./data/movies.csv')
+    ratings = pd.read_csv('./data/ratings.csv')
+    
+    movie_id = int(input('Please enter the ID of the movie you would like to leave a rating for: '))
+
+    movie = movies.loc[movies['movieId'] == movie_id]
+    existing_entry = np.where((ratings['userId'] == int(id)) & (ratings['movieId'] == movie_id))
+
+    if len(existing_entry[0]) == 0:
+        print('\n')
+        print('You are choosing to leave a rating for the film: ', movie['title'].item())
+        print('\n')
+        rating = float(input('Please leave a rating for this film (out of 5, in increments of 0.5): '))
+
+        timestamp = datetime.datetime.now().timestamp()
+
+        to_write = {'userId':id, 'movieId':movie_id, 'rating':rating, 'timestamp':timestamp}
+
+        with open('./data/ratings.csv', 'a', newline='') as csvfile:
+            fieldnames = ['userId','movieId', 'rating', 'timestamp']
+            writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
+
+            writer.writerow(to_write)
+
+        print('\n')
+        print('Successfully left your review... \n')
+
+    else:
+        print('You have already left a review for the film: ', movie['title'].item())
+        print('\n')
+
+    mainMenu(id)
 
 # shows active user their past ratings
 def viewRatings(id):
@@ -53,7 +90,10 @@ def viewRatings(id):
 
 
     print(result)
-    
+
+    mainMenu(id)
+
+# prints recommendations  
 def showRecommendations(id):
     recommender = ContentBasedSystem(id)
 
@@ -64,10 +104,12 @@ def showRecommendations(id):
 
     print(predictions[['title', 'prediction', 'top_tags']])
 
+    mainMenu(id)
+
 
 # load system for the active user
-def startSystem(id):
-    print('Booting up the recommender systems for user: ', id, '... \n')
+def mainMenu(id):
+    # print('Booting up the recommender systems for user: ', id, '... \n')
     # time.sleep(2)
 
     print('Menu: ')
@@ -81,11 +123,14 @@ def startSystem(id):
 
     if (choice) == '1':
         viewRatings(id)
+    elif choice == '2':
+        addNewRating(id)
     elif choice == '3':
         showRecommendations(id)
 
-def startUI():
-    print('--------Song Recommender System--------')
+# first menu displayed upon run
+def startMenu():
+    print('--------Movie Recommender System--------')
     # time.sleep(3)
     print('Menu: ')
     print('1: Login')
@@ -112,7 +157,7 @@ def startUI():
             if int(userID) in existent_users:
                 print('User exists. ')
 
-                startSystem(userID)
+                mainMenu(userID)
 
             else:
                 print('User does not exist in the userbase.')
@@ -151,6 +196,7 @@ def startUI():
 
         print('Please remember this so you can login next time!')
 
+# create the users.json file with the database data
 def populateUsers():
     info = pd.read_csv('./data/ratings.csv', index_col=False)
 
@@ -172,5 +218,5 @@ def populateUsers():
 
 
 if __name__ == '__main__':
-    startUI()
+    startMenu()
     # populateUsers()
