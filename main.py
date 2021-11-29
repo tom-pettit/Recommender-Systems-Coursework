@@ -4,6 +4,7 @@ import json
 from random import randint
 import pandas as pd
 from content_based_filter import ContentBasedSystem
+from collaborative_filter import CollaborativeFilteringSystem
 import datetime
 import numpy as np
 
@@ -127,15 +128,27 @@ def viewRatings(id):
 
 # prints recommendations  
 def showRecommendations(id):
-    recommender = ContentBasedSystem(id)
+    recommender_choice = int(input('1: Content-Based Filter or 2: Collaborative Filter \n'))
 
-    print('Creating your personalised recommendations...')
-    predictions, user_top_tags = recommender.returnPredictedMovies()
+    if recommender_choice == 1:
+        recommender = ContentBasedSystem(id)
 
-    print('Because you like: ', [tag for tag in user_top_tags], '\n')
+        print('Creating your personalised recommendations...')
+        predictions, user_top_tags = recommender.returnPredictedMovies()
 
-    print(predictions[['title', 'prediction', 'top_tags']])
+        print('Because you like: ', [tag for tag in user_top_tags], '\n')
 
+        print(predictions[['title', 'prediction', 'top_tags']])
+
+    elif recommender_choice == 2:
+        recommender = CollaborativeFilteringSystem(id)
+
+        recommender.loadModelFromFile('trained_svd.sav')
+
+        predictions = recommender.makePredictions()
+
+        print(predictions)
+    
     mainMenu(id)
 
 
