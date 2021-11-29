@@ -64,6 +64,38 @@ def addNewRating(id):
 
     mainMenu(id)
 
+# allows active user to edit a previous rating of theirs
+def editRating(id):
+    ratings = pd.read_csv('./data/ratings.csv')
+    movies = pd.read_csv('./data/movies.csv')
+
+
+    movie_id = int(input('Enter the ID of the movie you would like to edit your rating for: \n'))
+
+    rating = ratings.loc[(ratings['userId'] == int(id)) & (ratings['movieId'] == movie_id)]
+    movie_info = movies.loc[movies['movieId'] == movie_id]
+
+    print('Film: ', movie_info['title'].item(), '\n')
+
+    print('Previous Rating: ', rating['rating'].item(), '\n')
+
+    new_rating = float(input('Enter a new rating for this film: '))
+    print('\n')
+
+    index = np.where((ratings['userId'] == int(id)) & (ratings['movieId'] == movie_id))[0][0]
+
+    ratings.iloc[index, 2] = new_rating
+
+    print('Updating the rating in the dataset...')
+
+    print('WARNING: This may take some time \n')
+
+    ratings.to_csv('./data/ratings.csv', index=False)
+
+    print('\n Successfully updated your rating \n')
+
+    mainMenu(id)
+
 # shows active user their past ratings
 def viewRatings(id):
     print('Loading your ratings...')
@@ -115,8 +147,9 @@ def mainMenu(id):
     print('Menu: ')
     print('1. View Ratings')
     print('2. Add a New Rating')
-    print('3. Recommendations')
-    print('4. Logout')
+    print('3. Edit Rating')
+    print('4. Recommendations')
+    print('5. Logout')
     print('\n')
 
     choice = input()
@@ -126,6 +159,8 @@ def mainMenu(id):
     elif choice == '2':
         addNewRating(id)
     elif choice == '3':
+        editRating(id)
+    elif choice == '4':
         showRecommendations(id)
 
 # first menu displayed upon run
