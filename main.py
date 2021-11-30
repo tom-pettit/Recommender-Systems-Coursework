@@ -74,55 +74,66 @@ def editRating(id):
     movie_id = int(input('Enter the ID of the movie you would like to edit your rating for: \n'))
 
     rating = ratings.loc[(ratings['userId'] == int(id)) & (ratings['movieId'] == movie_id)]
+
     movie_info = movies.loc[movies['movieId'] == movie_id]
 
-    print('Film: ', movie_info['title'].item(), '\n')
+    if rating.empty:
+        print('You have not left a review for the film: ', movie_info['title'].item(), '\n')
+    else:
 
-    print('Previous Rating: ', rating['rating'].item(), '\n')
+        print('Film: ', movie_info['title'].item(), '\n')
 
-    new_rating = float(input('Enter a new rating for this film: '))
-    print('\n')
+        print('Previous Rating: ', rating['rating'].item(), '\n')
 
-    index = np.where((ratings['userId'] == int(id)) & (ratings['movieId'] == movie_id))[0][0]
+        new_rating = float(input('Enter a new rating for this film: '))
+        print('\n')
 
-    ratings.iloc[index, 2] = new_rating
+        index = np.where((ratings['userId'] == int(id)) & (ratings['movieId'] == movie_id))[0][0]
 
-    print('Updating the rating in the dataset...')
+        ratings.iloc[index, 2] = new_rating
 
-    print('WARNING: This may take some time \n')
+        print('Updating the rating in the dataset...')
 
-    ratings.to_csv('./data/ratings.csv', index=False)
+        print('WARNING: This may take some time \n')
 
-    print('\n Successfully updated your rating \n')
+        ratings.to_csv('./data/ratings.csv', index=False)
+
+        print('\n Successfully updated your rating \n')
 
     mainMenu(id)
 
 # shows active user their past ratings
 def viewRatings(id):
-    print('Loading your ratings...')
+    print('Loading your ratings... \n')
     info = pd.read_csv('./data/ratings.csv', index_col=False)
 
     ratings = (info.loc[info['userId'] == int(id)])
 
-    movie_ids = ratings['movieId'].to_list()
+    if ratings.empty:
+        print('No ratings to display \n')
+    else:
 
-    # print(movie_ids)
+        movie_ids = ratings['movieId'].to_list()
 
-    movie_names = getMovieNames(movie_ids)
+        # print(movie_ids)
 
-    result = ratings 
+        movie_names = getMovieNames(movie_ids)
 
-    result = result.drop('userId', 1)
-    result = result.drop('timestamp', 1)
-    result = result.drop('movieId', 1)
+        result = ratings 
 
-    result['movie'] = movie_names
+        result = result.drop('userId', 1)
+        result = result.drop('timestamp', 1)
+        result = result.drop('movieId', 1)
 
-    
-    result.set_index('movie', inplace=True)
+        result['movie'] = movie_names
+
+        
+        result.set_index('movie', inplace=True)
 
 
-    print(result)
+        print(result)
+
+        print('\n')
 
     mainMenu(id)
 
@@ -141,6 +152,8 @@ def showRecommendations(id):
         print(predictions[['title', 'prediction', 'top_tags']])
 
     elif recommender_choice == 2:
+        print('Creating your personalised recommendations...')
+
         recommender = CollaborativeFilteringSystem(id)
 
         recommender.loadModelFromFile('trained_svd.sav')
@@ -178,11 +191,13 @@ def mainMenu(id):
 
 # first menu displayed upon run
 def startMenu():
-    print('--------Movie Recommender System--------')
-    # time.sleep(3)
+    print('--------Movie Recommender System-------- \n')
+    print('Welcome to this recommender system. This system saves data about the ratings you and other users have given to films in the database. It also uses tags that users have given to the films, in order to learn details about each film.')
+    time.sleep(2)
     print('Menu: ')
     print('1: Login')
     print('2: Create New User')
+    print('Please Note: Creating a new user will lead to the collaborative filtering recommender system being offline.')
     print('Please choose an option: \n')
 
     choice = input()
@@ -216,18 +231,23 @@ def startMenu():
     elif choice == '2':
         print('Creating a New User... \n')
         # time.sleep(2)
+        number_of_users = 0
+        with open('users.json', "r") as users_file:
+            info = json.load(users_file)
+            number_of_users = len(info['users'])
 
-        newID = randint(100000, 999999)
+        newID = number_of_users + 1
 
         users = []
         with open('users.json', "r") as users_file:
             info = json.load(users_file)
+
             users = info
             all_users = info['users']
             users = all_users.copy()
 
             while checkNewID(newID) is not True:
-                newID = randint(100000, 999999)
+                newID += 1
 
             users.append(newID)
 

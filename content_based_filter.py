@@ -25,7 +25,12 @@ class ContentBasedSystem():
 
         user_avg_rating = user_movies['rating'].mean()
 
-        user_movies['rating'] = user_movies['rating'] - user_avg_rating
+        number_of_ratings = user_movies.shape[0]
+
+        if number_of_ratings >= 2:
+            user_movies['rating'] = user_movies['rating'] - user_avg_rating
+        else:
+            pass
 
         user_profile = []
         for i in range(len(user_movies.columns)-1):

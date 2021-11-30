@@ -9,7 +9,7 @@ from sklearn.preprocessing import MinMaxScaler
 
 class CollaborativeFilteringSystem():
     def __init__(self, id):
-        self.id = id
+        self.id = int(id)
         self.svd = SVD() 
         self.training_data = 0
         self.testing_data = 0
@@ -48,9 +48,7 @@ class CollaborativeFilteringSystem():
         print('saved svd model to sav file')
 
     def loadModelFromFile(self, filename):
-        print('loading model from file: ', filename)
         self.svd = pickle.load(open(filename, 'rb'))
-        print('successfully loaded model')
 
     def makeTestingPredictions(self):
         print(self.svd)
@@ -60,11 +58,9 @@ class CollaborativeFilteringSystem():
         accuracy.rmse(predictions)
 
     def makePredictions(self):
-        print('making predictions... \n')
         movies = pd.read_csv('./data/movies.csv')
         movies['prediction'] = [0 for i in range(movies.shape[0])]
         ratings = pd.read_csv('./data/ratings.csv', index_col=False)
-
 
         for index, row in movies.iterrows():
             prediction = self.svd.predict(self.id, row['movieId']).est
