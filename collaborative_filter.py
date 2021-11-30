@@ -61,6 +61,8 @@ class CollaborativeFilteringSystem():
         movies = pd.read_csv('./data/movies.csv')
         movies['prediction'] = [0 for i in range(movies.shape[0])]
         ratings = pd.read_csv('./data/ratings.csv', index_col=False)
+        all_tags = pd.read_csv('./data/genome-scores.csv')
+        all_tags_info = pd.read_csv('./data/genome-tags.csv')
 
         for index, row in movies.iterrows():
             prediction = self.svd.predict(self.id, row['movieId']).est
@@ -86,9 +88,36 @@ class CollaborativeFilteringSystem():
 
         top_10_predictions = movies[:10]
 
-        # print(top_10_predictions)
+        top_tags = []
+        for index, row in top_10_predictions.iterrows():
+            id = index
+            movie = movies.loc[movies.index == id]
+            title = movie['title'].item()
 
-        return movies[:10]
+            movie_tags = all_tags.loc[all_tags['movieId'] == id]
+
+            # print(id, movie_tags)
+
+            movie_tags = movie_tags.sort_values('relevance', ascending=False)
+
+            top_5_tag_ids = (movie_tags[:5])['tagId'].to_list()
+
+            tag_names = []
+
+            # print(id, top_5_tag_ids)
+            for tag in top_5_tag_ids:
+                tag_name = all_tags_info.loc[all_tags_info['tagId'] == tag]['tag'].item()
+                tag_names.append(tag_name)
+
+            # print(id, tag_names)
+            if len(tag_names) == 0:
+                tag_names = "No tags to display"
+            top_tags.append(tag_names)
+
+        top_10_predictions['top_tags'] = top_tags
+
+
+        return top_10_predictions
 
     def viewModelDetails(self):
         user_factors = self.svd.pu
@@ -98,17 +127,3 @@ class CollaborativeFilteringSystem():
 
         print(user_biases)
         print(item_biases)
-
-
-# collaborative_filter = CollaborativeFilteringSystem(1)
-
-# # data = collaborative_filter.prepareDataset()
-
-# # training_data, testing_data = collaborative_filter.trainTestSplit(data)
-
-# # collaborative_filter.trainModel(training_data)
-
-# collaborative_filter.loadModelFromFile('trained_svd.sav')
-# collaborative_filter.makePredictions()
-
-# collaborative_filter.viewModelDetails()

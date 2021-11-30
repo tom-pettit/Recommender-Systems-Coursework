@@ -8,6 +8,9 @@ from collaborative_filter import CollaborativeFilteringSystem
 import datetime
 import numpy as np
 
+pd.options.mode.chained_assignment = None  # default='warn'
+
+
 # returns true if id is unique, and false otherwise
 def checkNewID(id):
     with open('users.json', "r") as users_file:
@@ -34,6 +37,8 @@ def getMovieNames(ids):
 def addNewRating(id):
     movies = pd.read_csv('./data/movies.csv')
     ratings = pd.read_csv('./data/ratings.csv')
+
+    print('Please note: When you leave a rating for a film, we save this to our database. This data is then used to make better recommendations for you in future.')
     
     movie_id = int(input('Please enter the ID of the movie you would like to leave a rating for: '))
 
@@ -160,7 +165,7 @@ def showRecommendations(id):
 
         predictions = recommender.makePredictions()
 
-        print(predictions)
+        print(predictions[['title', 'prediction', 'top_tags']])
     
     mainMenu(id)
 
