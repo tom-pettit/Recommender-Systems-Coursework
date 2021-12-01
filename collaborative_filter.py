@@ -25,7 +25,7 @@ class CollaborativeFilteringSystem():
         return data
 
     def trainTestSplit(self, data):
-        training_data, testing_data = train_test_split(data, test_size=.25)
+        training_data, testing_data = train_test_split(data, train_size=0.0075, test_size=.0025)
 
         self.training_data = training_data
         self.testing_data = testing_data
@@ -50,11 +50,11 @@ class CollaborativeFilteringSystem():
     def loadModelFromFile(self, filename):
         self.svd = pickle.load(open(filename, 'rb'))
 
-    def makeTestingPredictions(self):
+    def evaluateModel(self):
         print(self.svd)
         predictions = self.svd.test(self.testing_data)
 
-        print('made predictions')
+        print('made predictions', predictions)
         accuracy.rmse(predictions)
 
     def makePredictions(self):

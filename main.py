@@ -154,7 +154,16 @@ def showRecommendations(id):
 
         print('Because you like: ', [tag for tag in user_top_tags], '\n')
 
-        print(predictions[['title', 'prediction', 'top_tags']])
+        predictions['prediction'] = predictions['prediction'] * 100
+
+        predictions.rename(columns={'prediction': 'Match (%)'}, inplace=True)
+
+        predictions = predictions.round({'Match (%)': 1})
+
+        print(predictions[['title', 'Match (%)', 'top_tags']])
+
+        print('\n')
+
 
     elif recommender_choice == 2:
         print('Creating your personalised recommendations...')
@@ -165,7 +174,15 @@ def showRecommendations(id):
 
         predictions = recommender.makePredictions()
 
-        print(predictions[['title', 'prediction', 'top_tags']])
+        predictions['prediction'] = predictions['prediction'] * 100
+
+        predictions.rename(columns={'prediction': 'Match (%)'}, inplace=True)
+
+        predictions = predictions.round({'Match (%)': 1})
+
+        print(predictions[['title', 'Match (%)', 'top_tags']])
+
+        print('\n')
     
     mainMenu(id)
 
