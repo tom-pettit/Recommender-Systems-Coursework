@@ -145,29 +145,6 @@ class ContentBasedSystem():
 
         weighted_movies['prediction'] = round(weighted_movies['prediction'] * 2) / 2
 
-        # weighted_movies = weighted_movies.sort_values('prediction', ascending=False)
-
-        # weighted_movies = weighted_movies.loc[~weighted_movies.index.isin(seen_movies)]
-        
-        # top_10_predictions = weighted_movies[:10]
-
-        # tags = user_profile.columns
-        # features = user_profile.values.flatten().tolist()
-
-        # user_tag_impact_dict =  dict(zip(tags, features))
-
-        # user_tag_impact_dict = dict(sorted(user_tag_impact_dict.items(), key=lambda item: item[1], reverse=True))
-
-        # top_user_tags = {k: user_tag_impact_dict[k] for k in list(user_tag_impact_dict.keys())[:5]}
-
-        # top_user_tags = list(top_user_tags.keys())
-
-        # tags_info = pd.read_csv('./data/genome-tags.csv')
-
-        # user_top_tags_info = tags_info.loc[tags_info['tagId'].isin(top_user_tags)]
-
-        # user_top_tags = list(user_top_tags_info['tag'])
-
         predictions =  weighted_movies[['prediction']]
 
 
@@ -211,37 +188,46 @@ class ContentBasedSystem():
         reader = Reader()
         data = Dataset.load_from_df(ratings, reader)
 
-        print('prepared dataset')
         return data
 
     def trainTestSplit(self, data):
         training_data, testing_data = train_test_split(data, test_size=0.25)
 
-        print('split into train and test sets')
         return training_data, testing_data
 
     def evaluateModel(self):
         ratings = pd.read_csv('./data/ratings.csv')
         ratings = ratings.drop(columns='timestamp')
 
+        rmse_sum = 0
+        for i in range(5):
+            random_user = random.choice(ratings['userId'].unique())
 
-        # data = self.prepareDataset()
-        random_user = random.choice(ratings['userId'].unique())
+            user_ratings = ratings.loc[ratings['userId'] == random_user]
 
-        user_ratings = ratings.loc[ratings['userId'] == random_user]
+            training_data, testing_data = self.trainTestSplit(user_ratings)
 
-        training_data, testing_data = self.trainTestSplit(user_ratings)
+            predictions = self.makeTestingPredictions(random_user, training_data, testing_data)
 
-        predictions = self.makeTestingPredictions(random_user, training_data, testing_data)
+            testing_data.set_index('movieId', inplace=True)
 
-        testing_data.set_index('movieId', inplace=True)
+            testing_data = testing_data.drop('userId', axis=1)
 
-        testing_data = testing_data.drop('userId', axis=1)
+            testing_data = testing_data.sort_values('movieId', ascending=True)
 
-        rmse = mean_squared_error(testing_data['rating'], predictions['prediction'], squared=False)
+            print(testing_data)
 
-        print(rmse)
-        # accuracy.rmse(predictions)
+            print(predictions)
 
-model = ContentBasedSystem(34)
-model.evaluateModel()
+            rmse = mean_squared_error(testing_data['rating'], predictions['prediction'], squared=False)
+
+            print(rmse)
+
+            rmse_sum += rmse 
+
+        rmse = rmse_sum / 5
+
+        print('RMSE: ', rmse)
+
+# model = ContentBasedSystem(34)
+# model.evaluateModel()
