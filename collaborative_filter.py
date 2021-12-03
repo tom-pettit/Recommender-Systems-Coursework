@@ -1,11 +1,12 @@
 from surprise import SVD
 import pandas as pd
-from surprise.model_selection import cross_validate
 from surprise import Reader, Dataset
 from surprise.model_selection import train_test_split
 from surprise import accuracy
 import pickle
 from sklearn.preprocessing import MinMaxScaler
+import numpy as np
+import random
 
 class CollaborativeFilteringSystem():
     def __init__(self, id):
@@ -25,7 +26,7 @@ class CollaborativeFilteringSystem():
         return data
 
     def trainTestSplit(self, data):
-        training_data, testing_data = train_test_split(data, train_size=0.0075, test_size=.0025)
+        training_data, testing_data = train_test_split(data, train_size=0.075, test_size=.025)
 
         self.training_data = training_data
         self.testing_data = testing_data
@@ -54,7 +55,7 @@ class CollaborativeFilteringSystem():
         print(self.svd)
         predictions = self.svd.test(self.testing_data)
 
-        print('made predictions', predictions)
+        print('made predictions')
         accuracy.rmse(predictions)
 
     def makePredictions(self):
@@ -127,3 +128,44 @@ class CollaborativeFilteringSystem():
 
         print(user_biases)
         print(item_biases)
+
+    def CosineSimilarity(self, ratings, id1, id2):
+        users_rated_1 = ratings.loc[ratings['movieId'] == id1]['userId']
+        users_rated_2 = ratings.loc[ratings['movieId'] == id2]['userId']
+
+        count_users_rated_1 = users_rated_1.shape[0]
+        count_users_rated_2 = users_rated_2.shape[0]
+        count_users_rated_both = len(list(set(users_rated_1).intersection(users_rated_2)))
+
+        cosine_similarity = count_users_rated_both / ( np.sqrt(count_users_rated_1) * np.sqrt(count_users_rated_2) )
+
+        return cosine_similarity
+
+    def calculateDiversity(self, predictions):
+        predictions = predictions[['prediction']]
+        ratings = pd.read_csv('./data/ratings.csv')
+        
+        # index is the movie ID
+        cosine_similarities = []
+        for index1, row1 in predictions.iterrows():
+            for index2, row2 in predictions.iterrows():
+                if index1 != index2:
+                    cosine_similarity = self.CosineSimilarity(ratings, index1, index2)
+                    cosine_similarities.append(cosine_similarity)
+
+        avg_cosine_similarity = sum(cosine_similarities) / len(cosine_similarities)
+
+        diversity = 1 - avg_cosine_similarity
+
+        return diversity
+
+# ratings = pd.read_csv('./data/ratings.csv')
+# random_user = random.choice(ratings['userId'].unique())
+# model = CollaborativeFilteringSystem(random_user)
+# # data = model.prepareDataset()
+# # training_data, testing_data = model.trainTestSplit(data)
+# model.loadModelFromFile('trained_svd.sav')
+# predictions = model.makePredictions()
+# diversity = model.calculateDiversity(predictions)
+
+# print(diversity)
