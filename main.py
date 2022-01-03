@@ -10,6 +10,9 @@ import numpy as np
 
 pd.options.mode.chained_assignment = None  # default='warn'
 
+# tracks whether current user has edited database. This is for the collaborative filter
+edited_database = False
+
 # used to ensure user input is valid 
 def ensure_input_is_integer(input):
     try:
@@ -50,6 +53,7 @@ def getMovieNames(ids):
 
 # let the active user leave another review
 def addNewRating(id):
+    global edited_database
     movies = pd.read_csv('./data/movies.csv')
     ratings = pd.read_csv('./data/ratings.csv')
 
@@ -107,6 +111,8 @@ def addNewRating(id):
         print('\n')
         print('Successfully left your review... \n')
 
+        edited_database = True
+
     else:
         print('You have already left a review for the film: ', movie['title'].item())
         print('\n')
@@ -115,17 +121,30 @@ def addNewRating(id):
 
 # allows active user to edit a previous rating of theirs
 def editRating(id):
+    global edited_database
     ratings = pd.read_csv('./data/ratings.csv')
     movies = pd.read_csv('./data/movies.csv')
 
+    valid_movie_id = False 
+    while valid_movie_id is False:
+        movie_id = input('Enter the ID of the movie you would like to edit your rating for: \n')
 
-    movie_id = int(input('Enter the ID of the movie you would like to edit your rating for: \n'))
+        if ensure_input_is_integer(movie_id) is False:
+            print('Movie ID must be an integer')
+
+        else:
+            valid_movie_id = True
+            movie_id = int(movie_id)
+
 
     rating = ratings.loc[(ratings['userId'] == int(id)) & (ratings['movieId'] == movie_id)]
 
     movie_info = movies.loc[movies['movieId'] == movie_id]
 
-    if rating.empty:
+    if movie_info.empty:
+        print('No such movie exists with the ID: ', movie_id, '\n')
+
+    elif rating.empty:
         print('You have not left a review for the film: ', movie_info['title'].item(), '\n')
     else:
 
@@ -155,6 +174,8 @@ def editRating(id):
         ratings.to_csv('./data/ratings.csv', index=False)
 
         print('\n Successfully updated your rating \n')
+
+        edited_database = True
 
     mainMenu(id)
 
@@ -218,6 +239,9 @@ def showRecommendations(id):
 
 
     elif recommender_choice == 2:
+        if edited_database is True:
+            print('WARNING: You have updated the database with either a new rating or editing a previous rating. This updated data will not be reflected in the collaborative filtering recommendations.')
+    
         print('Creating your personalised recommendations...')
 
         recommender = CollaborativeFilteringSystem(id)
