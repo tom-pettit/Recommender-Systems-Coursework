@@ -10,6 +10,21 @@ import numpy as np
 
 pd.options.mode.chained_assignment = None  # default='warn'
 
+# used to ensure user input is valid 
+def ensure_input_is_integer(input):
+    try:
+        x = int(input)
+        return True
+    except ValueError:
+        return False
+
+# used to ensure new rating is valid
+def ensure_input_is_float(input):
+    try:
+        x = float(input)
+        return True
+    except ValueError:
+        return False
 
 # returns true if id is unique, and false otherwise
 def checkNewID(id):
@@ -38,18 +53,46 @@ def addNewRating(id):
     movies = pd.read_csv('./data/movies.csv')
     ratings = pd.read_csv('./data/ratings.csv')
 
-    print('Please note: When you leave a rating for a film, we save this to our database. This data is then used to make better recommendations for you in future.')
+    print('Please Note: When you leave a rating for a film, we save this to our database. This data is then used to make better recommendations for you in future.')
     
-    movie_id = int(input('Please enter the ID of the movie you would like to leave a rating for: '))
+    valid_movie_id = False 
+
+    while valid_movie_id is False:
+        movie_id = (input('Please enter the ID of the movie you would like to leave a rating for: '))
+
+        if ensure_input_is_integer(movie_id) is False:
+            print('Movie ID must be an integer')
+        else:
+            valid_movie_id = True 
+            movie_id = int(movie_id)
 
     movie = movies.loc[movies['movieId'] == movie_id]
+
     existing_entry = np.where((ratings['userId'] == int(id)) & (ratings['movieId'] == movie_id))
 
-    if len(existing_entry[0]) == 0:
+    if movie.empty:
+        print('No such movie exists with the ID: ', movie_id, '\n')
+
+    elif len(existing_entry[0]) == 0:
         print('\n')
         print('You are choosing to leave a rating for the film: ', movie['title'].item())
         print('\n')
-        rating = float(input('Please leave a rating for this film (out of 5, in increments of 0.5): '))
+        print('Please Note: Ratings will be rounded to the nearest 0.5.')
+
+        valid_rating = False
+
+        while valid_rating is False:
+            rating = input('Please leave a rating for this film (between 0 and 5, ideally in increments of 0.5): ')
+
+            if ensure_input_is_float(rating) is False:
+                print('Rating must be a number')
+            else:
+                rating = float(rating)
+                if rating >= 0 and rating <= 5:
+                    rating = round(rating * 2) / 2
+                    valid_rating = True
+                else:
+                    print('Invalid Rating. Please try again.')
 
         timestamp = datetime.datetime.now().timestamp()
 
@@ -90,7 +133,15 @@ def editRating(id):
 
         print('Previous Rating: ', rating['rating'].item(), '\n')
 
-        new_rating = float(input('Enter a new rating for this film: '))
+        valid_rating = False
+
+        while valid_rating is False:
+            new_rating = float(input('Please leave a rating for this film (between 0 and 5, ideally in increments of 0.5): '))
+            if new_rating >= 0 and new_rating <= 5:
+                new_rating = round(new_rating * 2) / 2
+                valid_rating = True
+            else:
+                print('Invalid Rating. Please try again.')
         print('\n')
 
         index = np.where((ratings['userId'] == int(id)) & (ratings['movieId'] == movie_id))[0][0]
@@ -128,15 +179,16 @@ def viewRatings(id):
 
         result = result.drop('userId', 1)
         result = result.drop('timestamp', 1)
-        result = result.drop('movieId', 1)
+        
 
         result['movie'] = movie_names
 
         
         result.set_index('movie', inplace=True)
 
-
-        print(result)
+        # print whole table
+        with pd.option_context('display.max_rows', None, 'display.max_columns', None): 
+            print(result)
 
         print('\n')
 
@@ -200,16 +252,28 @@ def mainMenu(id):
     print('5. Logout')
     print('\n')
 
-    choice = input()
+    valid_option = False 
 
-    if (choice) == '1':
-        viewRatings(id)
-    elif choice == '2':
-        addNewRating(id)
-    elif choice == '3':
-        editRating(id)
-    elif choice == '4':
-        showRecommendations(id)
+    while valid_option is False:
+        choice = input()
+
+        if (choice) == '1':
+            valid_option = True
+            viewRatings(id)
+        elif choice == '2':
+            valid_option = True
+            addNewRating(id)
+        elif choice == '3':
+            valid_option = True
+            editRating(id)
+        elif choice == '4':
+            valid_option = True
+            showRecommendations(id)
+        elif choice == '5':
+            quit()
+        else:
+            print('Invalid Option')
+            print('Please enter a valid option: ')
 
 # first menu displayed upon run
 def startMenu():
@@ -222,69 +286,84 @@ def startMenu():
     print('Please Note: Creating a new user will lead to the collaborative filtering recommender system being offline.')
     print('Please choose an option: \n')
 
-    choice = input()
+    valid_choice = False
 
-    # login as an existing user
-    if (choice) == '1':
-        print('Login \n')
-        # time.sleep(1)
+    while valid_choice is False:
+        choice = input()
 
-        print('Please enter your User ID: ')
+        # login as an existing user
+        if (choice) == '1':
+            valid_choice = True
+            print('Login \n')
+            # time.sleep(1)
 
-        userID = input()
+            print('Please enter your User ID: ')
 
-        print('Checking if user exists... \n')
-        # time.sleep(2)
-        with open('users.json', "r") as users_file:
-            info = json.load(users_file)
-            existent_users = info['users']
+            valid_user_input = False
 
-            if int(userID) in existent_users:
-                print('User exists. ')
+            while valid_user_input is False:
+                userID = input()
 
-                mainMenu(userID)
+                if ensure_input_is_integer(userID) is False:
+                    print('User ID must be integer')
+                    print('Please enter a valid user ID: ')
+                else:
+                    valid_user_input = True
+                    print('Checking if user exists... \n')
+                    with open('users.json', "r") as users_file:
+                        info = json.load(users_file)
+                        existent_users = info['users']
 
-            else:
-                print('User does not exist in the userbase.')
+                        if int(userID) in existent_users:
+                            print('User exists. ')
 
-        # time.sleep(1)
+                            mainMenu(userID)
 
-    # creating a new user
-    elif choice == '2':
-        print('Creating a New User... \n')
-        # time.sleep(2)
-        number_of_users = 0
-        with open('users.json', "r") as users_file:
-            info = json.load(users_file)
-            number_of_users = len(info['users'])
+                        else:
+                            print('User does not exist in the userbase.')
 
-        newID = number_of_users + 1
 
-        users = []
-        with open('users.json', "r") as users_file:
-            info = json.load(users_file)
+        # creating a new user
+        elif choice == '2':
+            valid_choice = True
+            print('Creating a New User... \n')
+            # time.sleep(2)
+            number_of_users = 0
+            with open('users.json', "r") as users_file:
+                info = json.load(users_file)
+                number_of_users = len(info['users'])
 
-            users = info
-            all_users = info['users']
-            users = all_users.copy()
+            newID = number_of_users + 1
 
-            while checkNewID(newID) is not True:
-                newID += 1
+            users = []
+            with open('users.json', "r") as users_file:
+                info = json.load(users_file)
 
-            users.append(newID)
+                users = info
+                all_users = info['users']
+                users = all_users.copy()
 
-        to_write = {}
-        to_write['users'] = users
+                while checkNewID(newID) is not True:
+                    newID += 1
 
-        with open('users.json', "w") as users_file:
-            to_write = json.dumps(to_write)
-            users_file.write(to_write)
+                users.append(newID)
 
-        print('Your new User ID is: ', newID)
+            to_write = {}
+            to_write['users'] = users
 
-        # time.sleep(1)
+            with open('users.json', "w") as users_file:
+                to_write = json.dumps(to_write)
+                users_file.write(to_write)
 
-        print('Please remember this so you can login next time!')
+            print('Your new User ID is: ', newID)
+
+            # time.sleep(1)
+
+            print('Please remember this so you can login next time!')
+        
+        else:
+            print('Invalid Option')
+            print('Please enter an available option: ')
 
 # create the users.json file with the database data
 def populateUsers():
