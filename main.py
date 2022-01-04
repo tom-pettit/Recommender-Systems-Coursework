@@ -121,6 +121,7 @@ def addNewRating(id):
 
 # allows active user to edit a previous rating of theirs
 def editRating(id):
+    print('Editing a previous rating will update your rating in our database, so that we can provide more accurate recommendations in future. \n')
     global edited_database
     ratings = pd.read_csv('./data/ratings.csv')
     movies = pd.read_csv('./data/movies.csv')
@@ -333,13 +334,12 @@ def startMenu():
                     print('Please enter a valid user ID: ')
                 else:
                     valid_user_input = True
-                    print('Checking if user exists... \n')
                     with open('users.json', "r") as users_file:
                         info = json.load(users_file)
                         existent_users = info['users']
 
                         if int(userID) in existent_users:
-                            print('User exists. ')
+                            print('\nWelcome User', userID, '\n')
 
                             mainMenu(userID)
 

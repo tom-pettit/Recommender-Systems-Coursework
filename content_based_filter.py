@@ -9,7 +9,6 @@ import numpy as np
 
 
 class ContentBasedSystem():
-    # based off of: https://towardsdatascience.com/introduction-to-two-approaches-of-content-based-recommendation-system-fc797460c18c
     def __init__(self, id):
         self.id = id
 
