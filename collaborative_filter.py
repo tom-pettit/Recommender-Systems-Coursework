@@ -195,13 +195,12 @@ if __name__ == '__main__':
     ratings = pd.read_csv('./data/ratings.csv')
     random_user = random.choice(ratings['userId'].unique())
     model = CollaborativeFilteringSystem(random_user)
+    model.loadModelFromFile('trained_svd.sav')
 
     data = model.prepareDataset()
     training_data, testing_data = model.trainTestSplit(data)
     rmse = model.evaluateModel(testing_data)
-    print('RMSE: ', rmse)
 
-    model.loadModelFromFile('trained_svd.sav')
     predictions = model.makePredictions()
     diversity = model.calculateDiversity(predictions)
 
