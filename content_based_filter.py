@@ -151,8 +151,13 @@ class ContentBasedSystem():
 
         # create movieVectors only from supplied test ratings, not entire dataset
         test_movie_ids = test_ratings['movieId'].unique()
-        movieVectors = movieVectors.loc[movieVectors.index.isin(test_movie_ids)]
 
+        # ERROR IS HERE
+        print(len(test_movie_ids)) # THIS IS CORRECT
+        movieVectors = movieVectors.loc[movieVectors.index.isin(test_movie_ids)]
+        print(movieVectors.shape[0]) # THIS IS TOO SMALL
+
+        
         # create weighted movie keyword vector by multiplying movie keyword vectors with user profile
         weighted_movies = pd.DataFrame()
 
@@ -223,6 +228,7 @@ class ContentBasedSystem():
 
     # split data into training and testing datasets
     def trainTestSplit(self, data):
+        # split into train and test datasets with 25% in test and 75% in train
         training_data, testing_data = train_test_split(data, test_size=0.25)
 
         return training_data, testing_data
@@ -256,15 +262,17 @@ class ContentBasedSystem():
             testing_data = testing_data.sort_values('movieId', ascending=True)
 
             # print the actual ratings on the testing dataset movies
-            print(testing_data)
+            # print(testing_data)
 
             # print the predicted ratings on the testing dataset movies
-            print(predictions)
+            # print(predictions)
 
             # calculate the RMSE 
+            # print(testing_data['rating'])
+            # print(predictions['prediction'])
             rmse = mean_squared_error(testing_data['rating'], predictions['prediction'], squared=False)
 
-            print(rmse)
+            # print(rmse)
 
             # append RMSE to sum 
 
@@ -273,7 +281,7 @@ class ContentBasedSystem():
         # calculate average RMSE across 5 random users
         rmse = rmse_sum / 5
 
-        print('RMSE: ', rmse)
+        return rmse
 
     # calculate cosine similarity between 2 movies with id1 and id2
     def CosineSimilarity(self, ratings, id1, id2):
@@ -316,9 +324,18 @@ class ContentBasedSystem():
 
         return diversity
 
-# ratings = pd.read_csv('./data/ratings.csv')
-# random_user = random.choice(ratings['userId'].unique())
-# model = ContentBasedSystem(random_user)
-# predictions, _ = model.makePredictions()
-# diversity = model.calculateDiversity(predictions)
-# print(diversity)
+
+
+if __name__ == '__main__':
+    print('Running evaluations...')
+    ratings = pd.read_csv('./data/ratings.csv')
+    random_user = random.choice(ratings['userId'].unique())
+    model = ContentBasedSystem(random_user)
+
+    # calculate rmse
+    rmse = model.evaluateModel()
+    print('RMSE: ', rmse)
+
+    predictions, _ = model.makePredictions()
+    diversity = model.calculateDiversity(predictions)
+    print('Diversity: ', diversity)
