@@ -29,7 +29,7 @@ def ensure_input_is_float(input):
     except ValueError:
         return False
 
-# returns true if id is unique, and false otherwise
+# returns true if id is unique, and false otherwise. used for creating new user ID
 def checkNewID(id):
     with open('users.json', "r") as users_file:
         info = json.load(users_file)
@@ -40,7 +40,7 @@ def checkNewID(id):
         else:
             return True
 
-# returns names of the films given in a list of film IDs
+# returns names of the films for the inputted array of IDs
 def getMovieNames(ids):
     names = []
     movie_data = pd.read_csv('./data/movies.csv')
@@ -61,6 +61,7 @@ def addNewRating(id):
     
     valid_movie_id = False 
 
+    # ensure input is valid
     while valid_movie_id is False:
         movie_id = (input('Please enter the ID of the movie you would like to leave a rating for: '))
 
@@ -70,13 +71,16 @@ def addNewRating(id):
             valid_movie_id = True 
             movie_id = int(movie_id)
 
+    # find movie with inputted ID
     movie = movies.loc[movies['movieId'] == movie_id]
 
     existing_entry = np.where((ratings['userId'] == int(id)) & (ratings['movieId'] == movie_id))
 
+    # if that movie doesn't exist
     if movie.empty:
         print('No such movie exists with the ID: ', movie_id, '\n')
 
+    # if the movie does exist
     elif len(existing_entry[0]) == 0:
         print('\n')
         print('You are choosing to leave a rating for the film: ', movie['title'].item())
@@ -84,7 +88,7 @@ def addNewRating(id):
         print('Please Note: Ratings will be rounded to the nearest 0.5.')
 
         valid_rating = False
-
+        # ensure rating is valid
         while valid_rating is False:
             rating = input('Please leave a rating for this film (between 0 and 5, ideally in increments of 0.5): ')
 
@@ -98,10 +102,12 @@ def addNewRating(id):
                 else:
                     print('Invalid Rating. Please try again.')
 
+        # csv file has timestamp column. not used in this recommender system, so different formats in timestamp column of csv file do not matter
         timestamp = datetime.datetime.now().timestamp()
 
         to_write = {'userId':id, 'movieId':movie_id, 'rating':rating, 'timestamp':timestamp}
 
+        # write new rating to ratings.csv
         with open('./data/ratings.csv', 'a', newline='') as csvfile:
             fieldnames = ['userId','movieId', 'rating', 'timestamp']
             writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
@@ -111,6 +117,7 @@ def addNewRating(id):
         print('\n')
         print('Successfully left your review... \n')
 
+        # update variable to reflect changes to data that can't be used in the collaborative filter system
         edited_database = True
 
     else:
@@ -126,6 +133,7 @@ def editRating(id):
     ratings = pd.read_csv('./data/ratings.csv')
     movies = pd.read_csv('./data/movies.csv')
 
+    # ensure inputted movie ID is valid
     valid_movie_id = False 
     while valid_movie_id is False:
         movie_id = input('Enter the ID of the movie you would like to edit your rating for: \n')
@@ -142,11 +150,15 @@ def editRating(id):
 
     movie_info = movies.loc[movies['movieId'] == movie_id]
 
+    # if the movie with inputted ID doesn't exist
     if movie_info.empty:
         print('No such movie exists with the ID: ', movie_id, '\n')
 
+    # if the user hasn't left a previous review of the inputted movie
     elif rating.empty:
         print('You have not left a review for the film: ', movie_info['title'].item(), '\n')
+
+    # edit the previous rating
     else:
 
         print('Film: ', movie_info['title'].item(), '\n')
@@ -154,7 +166,7 @@ def editRating(id):
         print('Previous Rating: ', rating['rating'].item(), '\n')
 
         valid_rating = False
-
+        # ensure new rating is valid
         while valid_rating is False:
             new_rating = float(input('Please leave a rating for this film (between 0 and 5, ideally in increments of 0.5): '))
             if new_rating >= 0 and new_rating <= 5:
@@ -165,13 +177,13 @@ def editRating(id):
         print('\n')
 
         index = np.where((ratings['userId'] == int(id)) & (ratings['movieId'] == movie_id))[0][0]
-
+        # update the ratings dataframe to reflect new rating
         ratings.iloc[index, 2] = new_rating
 
         print('Updating the rating in the dataset...')
 
         print('WARNING: This may take some time \n')
-
+        # write the updated dataframe to the ratings.csv file
         ratings.to_csv('./data/ratings.csv', index=False)
 
         print('\n Successfully updated your rating \n')
@@ -185,10 +197,14 @@ def viewRatings(id):
     print('Loading your ratings... \n')
     info = pd.read_csv('./data/ratings.csv', index_col=False)
 
+    # find all ratings by the active user
     ratings = (info.loc[info['userId'] == int(id)])
 
+    # if the user has left no ratings
     if ratings.empty:
         print('No ratings to display \n')
+
+    # load all user ratings
     else:
 
         movie_ids = ratings['movieId'].to_list()
@@ -199,6 +215,7 @@ def viewRatings(id):
 
         result = ratings 
 
+        # drop unnecessary columns to aid with nicer output for user
         result = result.drop('userId', 1)
         result = result.drop('timestamp', 1)
         
@@ -208,7 +225,7 @@ def viewRatings(id):
         
         result.set_index('movie', inplace=True)
 
-        # print whole table
+        # print whole table, not just part of it
         with pd.option_context('display.max_rows', None, 'display.max_columns', None): 
             print(result)
 
@@ -218,28 +235,34 @@ def viewRatings(id):
 
 # prints recommendations  
 def showRecommendations(id):
+    # active user can choose between content-based or collaborative filter for their recommendations
     recommender_choice = int(input('1: Content-Based Filter or 2: Collaborative Filter \n'))
 
+    # content-based
     if recommender_choice == 1:
         recommender = ContentBasedSystem(id)
 
         print('Creating your personalised recommendations...')
         predictions, user_top_tags = recommender.returnPredictedMovies()
 
+        # provide explanations for recommendations
         print('Because you like: ', [tag for tag in user_top_tags], '\n')
 
+        # put prediction scores as percentages
         predictions['prediction'] = predictions['prediction'] * 100
 
         predictions.rename(columns={'prediction': 'Match (%)'}, inplace=True)
 
+        # round prediction scores to 1 decimal place
         predictions = predictions.round({'Match (%)': 1})
 
         print(predictions[['title', 'Match (%)', 'top_tags']])
 
         print('\n')
 
-
+    # collaborative
     elif recommender_choice == 2:
+        # if the active user has updated the ratings.csv file, the model would need to be retrained, which is very time consuming. Thus, this warning is displayed and the model has only been trained off the original dataset.
         if edited_database is True:
             print('WARNING: You have updated the database with either a new rating or editing a previous rating. This updated data will not be reflected in the collaborative filtering recommendations.')
     
@@ -247,14 +270,17 @@ def showRecommendations(id):
 
         recommender = CollaborativeFilteringSystem(id)
 
+        # load pre-trained model, so no need to train model again
         recommender.loadModelFromFile('trained_svd.sav')
 
         predictions = recommender.makePredictions()
 
+        # put prediction scores as percentages
         predictions['prediction'] = predictions['prediction'] * 100
 
         predictions.rename(columns={'prediction': 'Match (%)'}, inplace=True)
 
+        # round prediction scores to 1 decimal place
         predictions = predictions.round({'Match (%)': 1})
 
         print(predictions[['title', 'Match (%)', 'top_tags']])
@@ -263,11 +289,9 @@ def showRecommendations(id):
     
     mainMenu(id)
 
-
 # load system for the active user
 def mainMenu(id):
-    # print('Booting up the recommender systems for user: ', id, '... \n')
-    # time.sleep(2)
+    # 5 choices for active user
 
     print('Menu: ')
     print('1. View Ratings')
@@ -278,11 +302,11 @@ def mainMenu(id):
     print('\n')
 
     valid_option = False 
-
+    # ensure the active user has inputted a valid choice
     while valid_option is False:
         choice = input()
 
-        if (choice) == '1':
+        if choice == '1':
             valid_option = True
             viewRatings(id)
         elif choice == '2':
@@ -302,9 +326,13 @@ def mainMenu(id):
 
 # first menu displayed upon run
 def startMenu():
+    # display welcome message to user on start-up
     print('--------Movie Recommender System-------- \n')
     print('Welcome to this recommender system. This system saves data about the ratings you and other users have given to films in the database. It also uses tags that users have given to the films, in order to learn details about each film.')
+    # add delay to aid user experience
     time.sleep(2)
+
+    # display menu options
     print('Menu: ')
     print('1: Login')
     print('2: Create New User')
@@ -312,7 +340,7 @@ def startMenu():
     print('Please choose an option: \n')
 
     valid_choice = False
-
+    # ensure the user input is a valid choice from the menu
     while valid_choice is False:
         choice = input()
 
@@ -320,12 +348,11 @@ def startMenu():
         if (choice) == '1':
             valid_choice = True
             print('Login \n')
-            # time.sleep(1)
 
             print('Please enter your User ID: ')
 
             valid_user_input = False
-
+            # ensure inputted user ID is valid
             while valid_user_input is False:
                 userID = input()
 
@@ -334,15 +361,18 @@ def startMenu():
                     print('Please enter a valid user ID: ')
                 else:
                     valid_user_input = True
+                    # check inputted user ID exists in database
                     with open('users.json', "r") as users_file:
                         info = json.load(users_file)
                         existent_users = info['users']
 
+                        # user exists
                         if int(userID) in existent_users:
                             print('\nWelcome User', userID, '\n')
 
                             mainMenu(userID)
 
+                        # user does not exist
                         else:
                             print('User does not exist in the userbase.')
 
@@ -351,19 +381,21 @@ def startMenu():
         elif choice == '2':
             valid_choice = True
             print('Creating a New User... \n')
-            # time.sleep(2)
+
+            # check number of users currently in database
             number_of_users = 0
             with open('users.json', "r") as users_file:
                 info = json.load(users_file)
                 number_of_users = len(info['users'])
 
+            # new user will have a user ID one greater than the last user ID in the database
             newID = number_of_users + 1
 
+            # create array of all users in database, now including this new user
             users = []
             with open('users.json', "r") as users_file:
                 info = json.load(users_file)
 
-                users = info
                 all_users = info['users']
                 users = all_users.copy()
 
@@ -372,16 +404,16 @@ def startMenu():
 
                 users.append(newID)
 
+            # prepare to write the updated users array to the users.json file
             to_write = {}
             to_write['users'] = users
 
+            # update the users.json file
             with open('users.json', "w") as users_file:
                 to_write = json.dumps(to_write)
                 users_file.write(to_write)
 
             print('Your new User ID is: ', newID)
-
-            # time.sleep(1)
 
             print('Please remember this so you can login next time!')
         
@@ -390,24 +422,23 @@ def startMenu():
             print('Please enter an available option: ')
 
 # create the users.json file with the database data
+# NOTE: this only needs to be ran if users.json does not exist
 def populateUsers():
     info = pd.read_csv('./data/ratings.csv', index_col=False)
 
+    # get all user IDs in the ratings.csv file
     users = (info['userId'].unique())
 
     users = users.tolist()
 
+    # prepare to write users to json file
     to_write = {}
     to_write['users'] = users
 
-    # print(to_write)
-
+    # write all user IDs to users.json
     with open('users.json', "w") as users_file:
         to_write = json.dumps(to_write)
         users_file.write(to_write)
-
-
-    print(users)
 
 
 if __name__ == '__main__':
