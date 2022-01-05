@@ -8,6 +8,8 @@ from sklearn.preprocessing import MinMaxScaler
 import numpy as np
 import random
 
+pd.options.mode.chained_assignment = None 
+
 class CollaborativeFilteringSystem():
     # initialise id, the SVD model and the training and testing data variables used when evaluating the model
     def __init__(self, id):
@@ -22,7 +24,6 @@ class CollaborativeFilteringSystem():
         reader = Reader()
         data = Dataset.load_from_df(ratings, reader)
 
-        print('prepared dataset')
         return data
 
     # split the dataset into train and test datasets
@@ -30,7 +31,6 @@ class CollaborativeFilteringSystem():
         # split into train and test sets with 7.5% of total data in train and 2.5% in test. This is because the model is very large and takes a long time to run on large amounts of data
         training_data, testing_data = train_test_split(data, train_size=0.075, test_size=.025)
 
-        print('split into train and test sets')
         return training_data, testing_data
 
     # train the SVD model. This takes a while. A model has already been run and saved to trained_svd.sav.
@@ -60,8 +60,6 @@ class CollaborativeFilteringSystem():
     def evaluateModel(self, testing_data):
         # make predictions on the testing dataset. This returns a Prediction object, which includes the predicted ratings and the actual ratings
         predictions = self.svd.test(testing_data)
-
-        print('made predictions')
 
         # use the accuracy function from scikit-surprise to calculate RMSE
         rmse = accuracy.rmse(predictions)
@@ -191,16 +189,27 @@ class CollaborativeFilteringSystem():
         return diversity
 
 if __name__ == '__main__':
+    # run the file to run evaluations
     print('Running evaluations...')
     ratings = pd.read_csv('./data/ratings.csv')
+
+    # select a random user
     random_user = random.choice(ratings['userId'].unique())
+
+    # set up the model using the random user 
     model = CollaborativeFilteringSystem(random_user)
+
+    # load the SVD model from the pre-trained saved model
     model.loadModelFromFile('trained_svd.sav')
 
+    # prepare the dataset for use in evaluation
     data = model.prepareDataset()
     training_data, testing_data = model.trainTestSplit(data)
+
+    # calculate RMSE
     rmse = model.evaluateModel(testing_data)
 
+    # calculate Diversity
     predictions = model.makePredictions()
     diversity = model.calculateDiversity(predictions)
 

@@ -13,6 +13,9 @@ pd.options.mode.chained_assignment = None  # default='warn'
 # tracks whether current user has edited database. This is for the collaborative filter
 edited_database = False
 
+# track whether current user is a new account, and so whether collaborative filter will be personalised
+new_user = False
+
 # used to ensure user input is valid 
 def ensure_input_is_integer(input):
     try:
@@ -242,50 +245,99 @@ def showRecommendations(id):
     if recommender_choice == 1:
         recommender = ContentBasedSystem(id)
 
-        print('Creating your personalised recommendations...')
-        predictions, user_top_tags = recommender.returnPredictedMovies()
+        print('Creating your personalised recommendations...\n')
+        predictions, user_top_tags, user_movies = recommender.returnPredictedMovies()
 
-        # provide explanations for recommendations
-        print('Because you like: ', [tag for tag in user_top_tags], '\n')
+        # if the user has no rated movies
+        if len(user_movies) == 0:
+            print('\nIt appears you have no movie ratings yet! No problem, we think you could like...\n')
 
-        # put prediction scores as percentages
-        predictions['prediction'] = predictions['prediction'] * 100
+            # put prediction scores as percentages
+            predictions = predictions.drop('prediction', axis=1)
 
-        predictions.rename(columns={'prediction': 'Match (%)'}, inplace=True)
+            pd.set_option('display.max_colwidth', None)
+            print(predictions[['title', 'top_tags']])
 
-        # round prediction scores to 1 decimal place
-        predictions = predictions.round({'Match (%)': 1})
+            print('\n')
 
-        print(predictions[['title', 'Match (%)', 'top_tags']])
+        elif len(user_movies) <= 5:
+            print('You have only rated', len(user_movies), 'movies, so we do not know much about you yet.\n')
+            print('But, we think you like: ', [tag for tag in user_top_tags], '\n')
+            print('And so we think you could like...\n')
 
-        print('\n')
+            predictions.drop('prediction', axis=1)
+
+            pd.set_option('display.max_colwidth', None)
+            print(predictions[['title', 'top_tags']])
+
+            print('\n')
+        # if the user has >5 rated movies
+        else:
+            # provide explanations for recommendations
+            print('\nBecause you like: ', [tag for tag in user_top_tags], '\n')
+            print('We think you could like...')
+
+            # put prediction scores as percentages
+            predictions['prediction'] = predictions['prediction'] * 100
+
+            predictions.rename(columns={'prediction': 'Match (%)'}, inplace=True)
+
+            # round prediction scores to 1 decimal place
+            predictions = predictions.round({'Match (%)': 1})
+
+            pd.set_option('display.max_colwidth', None)
+            print(predictions[['title', 'Match (%)', 'top_tags']])
+
+            print('\n')
 
     # collaborative
     elif recommender_choice == 2:
-        # if the active user has updated the ratings.csv file, the model would need to be retrained, which is very time consuming. Thus, this warning is displayed and the model has only been trained off the original dataset.
-        if edited_database is True:
-            print('WARNING: You have updated the database with either a new rating or editing a previous rating. This updated data will not be reflected in the collaborative filtering recommendations.')
-    
-        print('Creating your personalised recommendations...')
+        if new_user or int(id) > 162541:
+            print('This collaborative recommender system has been trained off the original dataset of ratings and users.')
+            print('As you are a new user, your ratings are not included in the trained model.')
+            print('Thus, this recommender system will just show you popular movies that you may enjoy.\n')
 
-        recommender = CollaborativeFilteringSystem(id)
+            print('Some popular films are...\n')
 
-        # load pre-trained model, so no need to train model again
-        recommender.loadModelFromFile('trained_svd.sav')
+            recommender = CollaborativeFilteringSystem(id)
 
-        predictions = recommender.makePredictions()
+            # load pre-trained model, so no need to train model again
+            recommender.loadModelFromFile('trained_svd.sav')
 
-        # put prediction scores as percentages
-        predictions['prediction'] = predictions['prediction'] * 100
+            predictions = recommender.makePredictions()
 
-        predictions.rename(columns={'prediction': 'Match (%)'}, inplace=True)
+            predictions = predictions.drop('prediction', axis=1)
 
-        # round prediction scores to 1 decimal place
-        predictions = predictions.round({'Match (%)': 1})
+            print(predictions[['title', 'top_tags']])
 
-        print(predictions[['title', 'Match (%)', 'top_tags']])
+            print('\n')
 
-        print('\n')
+        else:
+
+            # if the active user has updated the ratings.csv file, the model would need to be retrained, which is very time consuming. Thus, this warning is displayed and the model has only been trained off the original dataset.
+            if edited_database is True:
+                print('WARNING: You have updated the database with either a new rating or editing a previous rating. This updated data will not be reflected in the collaborative filtering recommendations.')
+        
+            print('Creating your personalised recommendations...')
+
+            recommender = CollaborativeFilteringSystem(id)
+
+            # load pre-trained model, so no need to train model again
+            recommender.loadModelFromFile('trained_svd.sav')
+
+            predictions = recommender.makePredictions()
+
+            # put prediction scores as percentages
+            predictions['prediction'] = predictions['prediction'] * 100
+
+            predictions.rename(columns={'prediction': 'Match (%)'}, inplace=True)
+
+            # round prediction scores to 1 decimal place
+            predictions = predictions.round({'Match (%)': 1})
+
+            print(predictions[['title', 'Match (%)', 'top_tags']])
+
+            print('\n')
     
     mainMenu(id)
 
@@ -326,6 +378,7 @@ def mainMenu(id):
 
 # first menu displayed upon run
 def startMenu():
+    global new_user
     # display welcome message to user on start-up
     print('--------Movie Recommender System-------- \n')
     print('Welcome to this recommender system. This system saves data about the ratings you and other users have given to films in the database. It also uses tags that users have given to the films, in order to learn details about each film.')
@@ -415,7 +468,11 @@ def startMenu():
 
             print('Your new User ID is: ', newID)
 
-            print('Please remember this so you can login next time!')
+            print('Please remember this so you can login next time!\n')
+
+            new_user = True
+
+            mainMenu(newID)
         
         else:
             print('Invalid Option')

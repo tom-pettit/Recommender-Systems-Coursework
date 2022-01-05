@@ -28,6 +28,15 @@ class ContentBasedSystem():
         user_movies = movieVectors.loc[movieVectors['movieId'].isin(movie_ids)]
         user_movies = user_movies.pivot(index='movieId', columns='tagId', values='relevance')
 
+        # if the user has no ratings, assume they have no preference in tags ie they rate every tag as equally important
+        if len(movie_ids) == 0:
+            # give all 1128 tags a weighting of 1, so they are all equally important
+            user_profile = [1 for i in range(1128)]
+
+            # convert into pandas dataframe
+            user_profile = pd.DataFrame([user_profile], columns=[i for i in range(1, 1129)])
+            return user_profile, movie_ids
+
         # add user ratings to the movie keyword vectors
         user_movies['rating'] = user_ratings['rating']
 
@@ -37,7 +46,7 @@ class ContentBasedSystem():
         # if the user has rated 1 or fewer films, don't subtract the mean rating
         number_of_ratings = user_movies.shape[0]
 
-        if number_of_ratings >= 2:
+        if number_of_ratings >= 5:
             # adjust ratings for mean rating of active user
             user_movies['rating'] = user_movies['rating'] - user_avg_rating
         else:
@@ -128,19 +137,19 @@ class ContentBasedSystem():
         # sort by tag score in descending order
         user_tag_impact_dict = dict(sorted(user_tag_impact_dict.items(), key=lambda item: item[1], reverse=True))
 
-        # get top 5 tags for the user
-        top_user_tags = {k: user_tag_impact_dict[k] for k in list(user_tag_impact_dict.keys())[:5]}
+        # get top 10 tags for the user
+        top_user_tags = {k: user_tag_impact_dict[k] for k in list(user_tag_impact_dict.keys())[:10]}
 
-        # top 5 tag IDs for user
+        # top 10 tag IDs for user
         top_user_tags = list(top_user_tags.keys())
 
         tags_info = pd.read_csv('./data/genome-tags.csv')
 
-        # get the name for the top 5 tag IDs
+        # get the name for the top 10 tag IDs
         user_top_tags_info = tags_info.loc[tags_info['tagId'].isin(top_user_tags)]
         user_top_tags = list(user_top_tags_info['tag'])
 
-        return top_10_predictions, user_top_tags
+        return top_10_predictions, user_top_tags, seen_movies
 
     # make recommendations for evaluation purposes
     def makeTestingPredictions(self, id, train_ratings, test_ratings):
@@ -152,12 +161,22 @@ class ContentBasedSystem():
         # create movieVectors only from supplied test ratings, not entire dataset
         test_movie_ids = test_ratings['movieId'].unique()
 
-        # ERROR IS HERE
-        print(len(test_movie_ids)) # THIS IS CORRECT
-        movieVectors = movieVectors.loc[movieVectors.index.isin(test_movie_ids)]
-        print(movieVectors.shape[0]) # THIS IS TOO SMALL
-
+        # some movies have been reviewed but do not have genome scores
+        # thus, for testing purposes, these will be removed from the testing dataset, as the model cannot accurately predict a prediction rating for these movies
         
+        # movies with genome scores and so accurate predictions
+        ids_wanted = []
+
+        # movies with no genome scores and so will be removed from test set
+        ids_unwanted = []
+        for movieId in test_movie_ids:
+            if movieId in movieVectors.index:
+                ids_wanted.append(movieId)
+            else:
+                ids_unwanted.append(movieId)
+
+        movieVectors = movieVectors.loc[movieVectors.index.isin(ids_wanted)]
+
         # create weighted movie keyword vector by multiplying movie keyword vectors with user profile
         weighted_movies = pd.DataFrame()
 
@@ -183,12 +202,12 @@ class ContentBasedSystem():
         predictions =  weighted_movies[['prediction']]
 
 
-        return predictions
+        return predictions, ids_unwanted
 
     # return predictions in a more appealing way to active user
     def returnPredictedMovies(self):
         # create predictions and top tags for the active user
-        top_10_predictions, user_top_tags = self.makePredictions()
+        top_10_predictions, user_top_tags, seen_movies = self.makePredictions()
         movieDetails = pd.read_csv('./data/movies.csv')
         all_tags = pd.read_csv('./data/genome-scores.csv')
         all_tags_info = pd.read_csv('./data/genome-tags.csv')
@@ -224,7 +243,7 @@ class ContentBasedSystem():
         top_10_predictions['title'] = titles
         top_10_predictions['top_tags'] = top_tags
 
-        return top_10_predictions, user_top_tags
+        return top_10_predictions, user_top_tags, seen_movies
 
     # split data into training and testing datasets
     def trainTestSplit(self, data):
@@ -251,10 +270,13 @@ class ContentBasedSystem():
             training_data, testing_data = self.trainTestSplit(user_ratings)
 
             # make predictions on testing data, by creating user profile from training data and calculating predictions on the testing data
-            predictions = self.makeTestingPredictions(random_user, training_data, testing_data)
+            predictions, unwanted_ids = self.makeTestingPredictions(random_user, training_data, testing_data)
 
             # change format of testing data dataframe
             testing_data.set_index('movieId', inplace=True)
+
+            # remove movies that have no genome scores from test set
+            testing_data = testing_data.loc[~testing_data.index.isin(unwanted_ids)]
 
             testing_data = testing_data.drop('userId', axis=1)
 
@@ -327,15 +349,20 @@ class ContentBasedSystem():
 
 
 if __name__ == '__main__':
+    # run the file to run evaluations
     print('Running evaluations...')
     ratings = pd.read_csv('./data/ratings.csv')
+    # select a random user
     random_user = random.choice(ratings['userId'].unique())
+
+    # set up the model using this random user
     model = ContentBasedSystem(random_user)
 
-    # calculate rmse
+    # calculate RMSE
     rmse = model.evaluateModel()
     print('RMSE: ', rmse)
 
-    predictions, _ = model.makePredictions()
+    # calculate Diversity
+    predictions, _, __ = model.makePredictions()
     diversity = model.calculateDiversity(predictions)
     print('Diversity: ', diversity)
