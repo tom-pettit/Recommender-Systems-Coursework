@@ -39,7 +39,7 @@ class CollaborativeFilteringSystem():
         data = self.prepareDataset()
 
         # split into train and test datasets
-        training_data, testing_data = self.trainTestSplit(data)
+        training_data, testing_data = train_test_split(data, train_size=0.75, test_size=0.25)
 
         print('fitting svd')
         # fit the SVD model on the training data
@@ -204,7 +204,7 @@ if __name__ == '__main__':
 
     # prepare the dataset for use in evaluation
     data = model.prepareDataset()
-    training_data, testing_data = model.trainTestSplit(data)
+    _, testing_data = model.trainTestSplit(data)
 
     # calculate RMSE
     rmse = model.evaluateModel(testing_data)
